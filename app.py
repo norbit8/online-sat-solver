@@ -1,6 +1,7 @@
 from flask import Flask
 from datetime import datetime
-from core/Parser import *
+from Parser import *
+
 app = Flask(__name__)
 
 @app.route('/')
