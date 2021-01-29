@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory
+from flask import Flask, render_template
 from datetime import datetime
 from Parser import *
 
@@ -17,7 +17,7 @@ def homepage():
 def bruh():
     the_time = datetime.now().strftime("%A, %d %b %Y %l:%M %p")
     cnf, variables, phi = parse('(p3->p2)')
-    return send_from_directory('/templates', 'index.html')
+    return render_template('./index.html')
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=True)
