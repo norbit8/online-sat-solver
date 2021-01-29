@@ -4,7 +4,7 @@ from prop_logic.formula import Formula
 from typing import List
 from parser_util.parser import Claus
 import networkx as nx
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 def find_uip(g, current_decision_node):
@@ -176,13 +176,13 @@ def conflict_analysis(g, current_decision_node, conflict_node):
     return create_clause(current_clause)
 
 
-def show_graph(g):
-    # print(self.current_graph.edges)
-    # for node in g.nodes:
-    #     print(node.variable_name, node.decision_level)
-    plt.subplot(121)
-    nx.draw(g, with_labels=True, font_weight='bold')
-    plt.show()
+# def show_graph(g):
+#     # print(self.current_graph.edges)
+#     # for node in g.nodes:
+#     #     print(node.variable_name, node.decision_level)
+#     plt.subplot(121)
+#     nx.draw(g, with_labels=True, font_weight='bold')
+#     plt.show()
 
 # DG = nx.DiGraph()
 # DG.add_nodes_from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
