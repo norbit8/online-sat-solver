@@ -1,4 +1,4 @@
-from Formula import *
+from prop_logic.formula import *
 
 
 def helper_nnf(formula: Formula):
@@ -173,7 +173,6 @@ def convert_to_cnf(formula: List[Formula]):
                 new_cnf.append(Formula.substitute_variables(Formula.parse("(~q|(r|~p))"), dictionary))
         else:
             if f.second == '~':
-                print("here",f.second.first)
                 dictionary = dict({'p': f.second.first, 'q': f.first})
                 new_cnf.append(Formula.substitute_variables(Formula.parse("(p|q)"), dictionary))
                 new_cnf.append(Formula.substitute_variables(Formula.parse("(~q|~p)"), dictionary))
@@ -182,9 +181,3 @@ def convert_to_cnf(formula: List[Formula]):
                 new_cnf.append(Formula.substitute_variables(Formula.parse("(~p|q)"), dictionary))
                 new_cnf.append(Formula.substitute_variables(Formula.parse("(p|~q)"), dictionary))
     return new_cnf
-
-
-if __name__ == "__main__":
-    # print(Formula.parse("(p->~q)").second.first)
-    # print(convert_to_cnf(Formula.parse("~(p->(p&q))")))
-    print(convert_to_cnf([Formula.parse("x"), Formula.parse("(p<->(~q|~r))")]))

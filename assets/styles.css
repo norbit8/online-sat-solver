@@ -1,0 +1,8 @@
+::selection {
+  color: black;
+  background: #fca311; /* WebKit/Blink Browsers */
+}
+::-moz-selection {
+  color: black;
+  background: #fca311; /* Gecko Browsers */
+}

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from Formula import Formula, is_base_formula, is_unary, is_variable
-from tempo import *
-from semantics import *
+from parser_util.parser_helper import *
+from prop_logic.semantics import *
 
 
 def createDic(f, d, counter):
@@ -182,6 +181,8 @@ def parse(str):
     phi = Formula.parse(str)
     Tseitinis_list, special_dict = get_Tseitinis_list(phi)
     f = [remove_literal_occurs_twice(f) for f in convert_to_cnf(Tseitinis_list)]
+
+
     f1 = [c for c in f if not is_clause_tautlogy(c)]
     cnf = [Claus(f) for f in f1]
     return cnf, phi.variables(), phi
@@ -286,7 +287,7 @@ class Literal:
         return self.variable_name.__hash__()
 
     def __repr__(self):
-        return self.variable_name + f"\n{self.decision_level}\n{self.assignment}"
+        return self.variable_name
 
 
 

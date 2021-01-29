@@ -1,12 +1,12 @@
 import copy
 from typing import *
-from Formula import Formula, is_binary, is_unary
-from semantics import evaluate, is_satisfiable
-import sys
-import Parser
-from Bcp import Bcp, PART_A_BCP, PART_B_BCP
+from prop_logic.formula import Formula
+from prop_logic.semantics import evaluate, is_satisfiable
+from parser_util import parser
+from sat_solver.bcp import Bcp, PART_A_BCP, PART_B_BCP
 from collections import Counter
-import numpy as np
+from smt_solver.smt_helper import *
+from fol.syntax import Formula as fol_Formula
 
 # constants
 UNSAT_STATE = 0
@@ -109,35 +109,58 @@ def assign_true_assingment(assignmet_map, f):
     literals.sort()
     return literals[0], True
 
+def convert_to_dic(l):
+    return {k:v for k,v in l}
 
-def part_A(f):
+
+def part_A(f, input_formula_fol=None, substitution_map=None):
     # pre-proccsing
     satsfible, assignmet_map = get_initial_assignment(f)
+    # print("bla" , assignmet_map)
     if not satsfible:
-        print("UNSAT!")
+        # print("UNSAT!")
         return (False, False)
+
+    if input_formula_fol != None:
+        ass_map2 = convert_to_dic(assignmet_map)
+        intersected_keys = list(ass_map2.keys() & substitution_map.keys())
+        model_over_formula_filtered = dict()
+        for key in intersected_keys:
+            model_over_formula_filtered[key] = ass_map2[key]
+        model_over_formula = switch_assignment_to_fol_assignment(model_over_formula_filtered,
+                                                                 substitution_map)
+        if model_over_formula != {}:
+            if not (congruence_closure_algorithm(model_over_formula, input_formula_fol)):
+                return (False, False)
 
     # creating watch literal map
     watch_literal_map = creates_watch_literals(f)
     # PART A
-    bcp = Bcp(watch_literal_map.copy())
+    bcp = Bcp(watch_literal_map.copy(), input_formula_fol, substitution_map)
     state, response = bcp.bcp_step(assignmet_map,
                                    PART_A_BCP)  # (msg_type(int), content) type: 0 - unsat, 1 - assignment, 2- conflict clause
-    if (state == UNSAT_STATE):
-        print("UNSAT!")
+    if state == UNSAT_STATE:
+        # print("UNSAT!")
         return (False, False)
-    elif (state == BCP_OK):
+    elif state == BCP_OK:
         assignmet_map = response
         return (True, (watch_literal_map, assignmet_map, bcp))
 
 
-def main(input_formula):
+def solve_sat(input_formula, smt_flag=False):
+    fol_formula = None
+    substitution_map = None
+    if smt_flag:  # SMT solver part
+        fol_formula = copy.deepcopy(input_formula)
+        fol_formula = fol_Formula.parse(fol_formula)
+        input_formula, substitution_map = fol_Formula.parse(input_formula).propositional_skeleton()
+        # model_over_formula = model_over_skeleton_to_model_over_formula(model_over_updated_skeleton, substitution_map)
     # cretes Tsieni
-    f, original_variables, original_formula = Parser.parse(input_formula)
+    f, original_variables, original_formula = parser.parse(str(input_formula))
     formula_original = copy.deepcopy(f)
     # number of variables in formula
     N = count_variables(f)
-    state, response = part_A(f)
+    state, response = part_A(f, fol_formula, substitution_map)
     if state == UNSAT_STATE:
         return UNSAT, {}
     else:
@@ -145,16 +168,16 @@ def main(input_formula):
     # PART B
     iteration_number = 0
     while len(assignmet_map.keys()) < N:
-        print("solver loop")
         iteration_number += 1
         chosen_literal, chosen_assignment = dlis(assignmet_map.copy(), f)
         # chosen_literal, chosen_assignment = assign_true_assingment(assignmet_map.copy(), f) #TODO remove
         state, response = bcp.bcp_step([(chosen_literal, chosen_assignment)], PART_B_BCP)
         if (state == ADD_CONFLICT_CLAUS):
             # build watch literal for claus add calus to formula and go back to line 104
-            formula_original.append(response)
+            if not (response is False):
+                formula_original.append(response)
             f = copy.deepcopy(formula_original)
-            state, response = part_A(f)
+            state, response = part_A(f, fol_formula, substitution_map)
             if state == UNSAT_STATE:
                 return UNSAT, {}
             else:
@@ -165,57 +188,7 @@ def main(input_formula):
     final_assignment = dict()
     for item in original_variables:
         final_assignment[item] = assignmet_map[item]
-    print("SAT")
+    if not (evaluate(original_formula, final_assignment)):
+        return UNSAT, {}
+    # print("SAT")
     return SAT, final_assignment
-
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-
-if __name__ == '__main__':
-    # building input sxample
-    # main('sys.argv[1]')
-    # print(is_satisfiable(f))
-    # main("((p|q)<->~(p|q))")
-    # main("(((((p1->p2)<->(q&p1))&((p33->p12)<->(q3&p4)))|(((p14->p8)<->(q512&p64))&((p82->p79)<->(q555&p95))))<->~((((p1->p2)<->(q&p1))&((p33->p12)<->(q3&p4)))|(((p14->p8)<->(q512&p64))&((p82->p79)<->(q555&p95)))))")
-
-    # ---- TESTS ----
-    # operators = ['->', '<->', '&', '|']
-    # neg_or_not_to_neg = ['~', '']
-    # number_of_iterations = 100
-    # N = 2
-    # while number_of_iterations != 0:
-    #     f = ''
-    #     number_of_variables = np.random.randint(N) + 2
-    #     for i in range(number_of_variables):
-    #         variable = neg_or_not_to_neg[np.random.randint(2)] + f'p{i}'
-    #         op = operators[np.random.randint(len(operators))]
-    #         if i + 1 == number_of_variables:
-    #             f += variable + ")"
-    #         else:
-    #             f += '(' + variable + op
-    #     f += ')' * (number_of_variables - 2)
-    #     #unsat stat
-    #     f = "(" + f + "<->~" + f + ")"
-    #     print("Testing the formula: ", f)
-    #     result, final_assignment = main(f)
-    #     print("Testing same result (SAT / UNSAT): ",
-    #           bcolors.OKCYAN + "PASSED" + bcolors.ENDC if is_satisfiable(
-    #               Formula.parse(f)) == result else bcolors.WARNING + "FAILED" + bcolors.ENDC)
-    #     if result:
-    #         print("Testing the assigment: ", bcolors.OKCYAN + "PASSED" + bcolors.ENDC
-    #         if evaluate(Formula.parse(f), final_assignment) is True else bcolors.WARNING + "FAILED" + bcolors.ENDC)
-    #     number_of_iterations -= 1
-    #     print("___________________________________________")
-    # ---- TESTS END ----
-    str = "((~p0|(p1|p2))<->~(~p0|(p1|p2)))"
-    main(str)

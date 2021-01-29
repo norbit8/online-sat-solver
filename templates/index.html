@@ -1,12 +1,94 @@
 {% extends 'base.html' %}
 
-{% block title %}Home{% endblock %}
+{% block title %}Main - SAT SOLVER{% endblock %}
+{% block header %}
 
-{% block content %}
-    <h1>Welcome Form User!</h1>
+{% endblock %}
 
-    <ul>
-    <li><a href="/sign-up">Sign-Up Example (Simple Simon)</a></li>
-    <li><a href="/register">Register (WTForms)</a></li>
-    </ul>
+{% block custom %}
+    <div class="row" style="color: #14213d;">
+
+        <div class="col">
+            <h1>Tseytin transformation</h1>
+            The Tseytin transformation,
+            alternatively written Tseitin transformation,
+            takes as input an arbitrary combinatorial logic circuit and
+            produces a boolean formula in conjunctive normal form (CNF),
+            which can be solved by a CNF-SAT solver
+            <a href="https://en.wikipedia.org/wiki/Tseytin_transformation">(Wikipedia)</a>.
+        </div>
+        <div class="col">
+            <h1>SAT Solver</h1>
+            A SAT solver is a tool that takes as input a CNF formula and outputs either a
+            satisfying Boolean assignment to the variables used in the CNF formula if
+            the formula is consistent or UNSAT if it is not.
+        </div>
+        <div class="col">
+            <div class="alert alert-info" role="alert" style="margin-top: 10px;">
+                <p style="font-weight: bold">
+                    Input Syntax:
+                </p>
+                <p>
+                    - An atomic proposition should be a letter in 'p' ... 'z', optionally followed by a sequence of
+                    digits.
+                    Examples: 'p', 'y12', 'z035'.
+
+                </p>
+                <p>
+                    - Could have 'T' and 'F' (as True and False respectively).
+
+                </p>
+                <p>
+                    - ~φ where φ is a valid propositional formula.
+
+                </p>
+                <p>
+                    - '(φ&ψ)' where each of φ and ψ is a valid propositional formula.
+
+                </p>
+                <p>
+                    - '(φ|ψ)' where each of φ and ψ is a valid propositional formula.
+
+                </p>
+                <p>
+                    - '(φ->ψ)' where each of φ and ψ is a valid propositional formula.
+
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="row" style="color: #14213d;">
+        <div class="col">
+            <form action="{{ url_for('tseytin') }}" method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <input name='formula' type="text" class="form-control" id="formula" aria-describedby="formula"
+                           placeholder="Insert formula i.e. (p3->p2)">
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg">Transform</button>
+            </form>
+        </div>
+        <div class="col">
+            <form action="{{ url_for('sat_solve') }}" method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <input name='formula' type="text" class="form-control" id="formula" aria-describedby="formula"
+                           placeholder="Insert formula i.e. (~p0|(~p1<->(p2<->(p3->p4))))">
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg">Solve</button>
+            </form>
+        </div>
+        <div class="col"></div>
+    </div>
+    <div class="row">
+        <div class="col-sm-4" style="color: #ff0300;">
+            {% if got %}
+                Result: {{ got }}
+            {% endif %}
+        </div>
+        <div class="col-sm-4" style="color: #ff0300;">
+            {% if sat_unsat %}
+                Result: {{ sat_unsat }}
+            {% endif %}
+        </div>
+        <div class="col-sm-4"></div>
+    </div>
 {% endblock %}

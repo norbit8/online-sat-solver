@@ -5,9 +5,9 @@
 
 """Semantic analysis of propositional-logic constructs."""
 
-from typing import AbstractSet, Iterable, Iterator, List, Mapping
+from typing import AbstractSet, Iterable
 
-from Formula import *
+from prop_logic.formula import *
 
 Model = Mapping[str, bool]
 

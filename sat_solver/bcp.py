@@ -1,8 +1,9 @@
 import networkx as nx
 from typing import *
-from Parser import Literal
-from Graphs import conflict_analysis
+from parser_util.parser import Literal
+from sat_solver.graphs import conflict_analysis
 import matplotlib.pyplot as plt
+from smt_solver.smt_helper import *
 
 # constants
 PART_A_BCP = False
@@ -11,12 +12,18 @@ PART_B_BCP = True
 
 class Bcp:
 
-    def __init__(self, watch_literals):
+    def __init__(self, watch_literals, fol_formula=None, substitution_map=None):
         self.current_graph = nx.DiGraph()
         self.current_watch_literals_map = watch_literals
         self.status = []
         self.current_assignment = dict()
         self.current_decision_level = -1
+        self.fol_formula = fol_formula
+        self.substitution_map = substitution_map
+        if not substitution_map is None:
+            self.fol_map_to_boolean_map = {substitution_map[k]: k for k in substitution_map}
+        else:
+            self.fol_map_to_boolean_map = None
 
     def remove_watch_literal(self, variable, claus):
         if variable in self.current_watch_literals_map.keys():
@@ -48,7 +55,8 @@ class Bcp:
                 return
         node = Literal(sink, self.current_decision_level, sink_assignment)
         self.current_graph.add_node(node)
-        edges = [(self.get_node_from_graph(s), self.get_node_from_graph(sink)) for s in source]
+        edges = [(self.get_node_from_graph(s), self.get_node_from_graph(sink)) for s in source if
+                 not (self.get_node_from_graph(sink), self.get_node_from_graph(s)) in self.current_graph.edges]
         self.current_graph.add_edges_from(edges)
         return
 
@@ -89,7 +97,6 @@ class Bcp:
                         self.update_watch_literal_map(new_watch_literal, claus, variable)
                     else:
                         self.remove_watch_literal(variable, claus)
-        print("finish inner loop")
         return new_assigments, build_graph_list
 
     def one_bcp_step(self, variable):
@@ -127,35 +134,78 @@ class Bcp:
         self.intialize_graph(new_assignment)
         decision = new_assignment[-1][0]
         while stack:
-            print("bcp loop")
-
             var, assign = stack.pop()
             # print(f"WATCH LIT:  {self.current_watch_literals_map}")
             add_to_stack, build_graph_list = self.one_bcp_step(var)
             # print(f"?????? {add_to_stack}, {var}")
             stack += add_to_stack
-            # cehcks for conflict
+            # todo wrap with boolean flag is smt or not
+            if self.fol_map_to_boolean_map:
+                if stack == []:
+                    # t-propogate, will get boolean assismng and add to "add_to_stack"
+                    model_over_formula, filtered_boolean_model = self.convert_boolean_model_to_fol_model()
+                    equalities, add_asign = t_propagate(model_over_formula, self.fol_formula)
+                    if add_asign != {}:
+                        add_to_stack = self.fol_map_to_bool_map_convertor(add_asign)
+                        stack += add_to_stack
+                        source1 = [self.fol_map_to_boolean_map[k] for k in equalities]
+                        self.add_edges_to_graph(source1, add_to_stack[0][0], add_to_stack[0][1])
+
+            # if partial assisngment is t-conflict
             if not (self.update_current_assignment(add_to_stack)):
                 if which_part == PART_A_BCP:
                     # unsat because conflict in PART A (the initialzing part)
-                    return (0, False)
+                    return 0, False
                 else:
-                    # conflict after decision, doint conflict analasis
+                    # conflict after decision, do conflict analysis
                     self.update_graph(build_graph_list)
-                    print("START")
                     c = conflict_analysis(self.current_graph, self.get_node_from_graph(decision),
                                           self.get_node_from_graph("c"))
-                    # print("here is conflict!",c, type(c))
-                    return (2, c)
-            print("STOP")
+                    return 2, c
             self.update_graph(build_graph_list)
-        # bcp ok, no conflicts
+            # T-CONFLICT
+            if not (self.fol_formula is None):  # SMT KICKS IN IFF FOL FORMULA IS DEFINED
+                model_over_formula, filtered_boolean_model = self.convert_boolean_model_to_fol_model()
+                if model_over_formula != {}:
+                    if not (
+                            congruence_closure_algorithm(model_over_formula,
+                                                         self.fol_formula)):  # THERE IS A T-CONFLICT
+                        self.update_graph_with_conflict(filtered_boolean_model)
+                        # self.show_graph()
+                        if which_part == PART_A_BCP:
+                            # unsat because conflict in PART A (the initialzing part)
+                            return 0, False
+                        else:
+                            # conflict after decision, do conflict analysis
+                            c = conflict_analysis(self.current_graph, self.get_node_from_graph(decision),
+                                                  self.get_node_from_graph("c"))
+                            return 2, c
         return 1, self.current_assignment
 
     def show_graph(self):
-        # print(self.current_graph.edges)
-        for node in self.current_graph.nodes:
-            print(node.variable_name, node.decision_level)
         plt.subplot(121)
         nx.draw(self.current_graph, with_labels=True, font_weight='bold')
         plt.show()
+
+    def convert_assign_map_to_list(self, assign_map):
+        return [(k, v) for k, v in assign_map.items()]
+
+    def update_graph_with_conflict(self, assign_map):
+        source = [k for k in assign_map.keys()]
+        c = Literal('c', self.current_decision_level, False)
+        edges = [(self.get_node_from_graph(s), c) for s in source]
+        self.current_graph.add_edges_from(edges)
+        return
+
+    def convert_boolean_model_to_fol_model(self):
+        intersected_keys = list(self.current_assignment.keys() & self.substitution_map.keys())
+        model_over_formula_filtered = dict()
+        for key in intersected_keys:
+            model_over_formula_filtered[key] = self.current_assignment[key]
+        return switch_assignment_to_fol_assignment(model_over_formula_filtered,
+                                                   self.substitution_map), model_over_formula_filtered
+
+    def fol_map_to_bool_map_convertor(self, sub_map):
+        assignment = {self.fol_map_to_boolean_map[k]: v for k, v in
+                      sub_map.items()}
+        return [(k, v) for k, v in assignment.items()]
