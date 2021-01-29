@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, send_from_directory
 from datetime import datetime
 from parser_util.parser import *
 from sat_solver.sat_engine import *
-import os
 
 app = Flask(__name__, static_folder='./assets')
 
@@ -43,7 +42,7 @@ def sat_solve():
 
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'assets'),
+    return send_from_directory('assets',
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 
