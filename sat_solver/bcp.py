@@ -2,7 +2,7 @@ import networkx as nx
 from typing import *
 from parser_util.parser import Literal
 from sat_solver.graphs import conflict_analysis
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from smt_solver.smt_helper import *
 
 # constants
@@ -182,10 +182,10 @@ class Bcp:
                             return 2, c
         return 1, self.current_assignment
 
-    def show_graph(self):
-        plt.subplot(121)
-        nx.draw(self.current_graph, with_labels=True, font_weight='bold')
-        plt.show()
+    # def show_graph(self):
+    #     plt.subplot(121)
+    #     nx.draw(self.current_graph, with_labels=True, font_weight='bold')
+    #     plt.show()
 
     def convert_assign_map_to_list(self, assign_map):
         return [(k, v) for k, v in assign_map.items()]
